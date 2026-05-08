@@ -1,0 +1,63 @@
+﻿@page "/edit-textbook/{id:int}"
+@using SomaShare.Models
+@using SomaShare.Data
+@inject ApplicationDbContext db
+@inject NavigationManager nav
+
+<h3>Edit Textbook</h3>
+
+@if (textbook == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="@textbook" OnValidSubmit="UpdateTextbook">
+
+        <div>
+            <label>Title</label>
+            <InputText @bind-Value="textbook.Title" />
+        </div>
+
+        <div>
+            <label>Author</label>
+            <InputText @bind-Value="textbook.Author" />
+        </div>
+
+        <div>
+            <label>Module</label>
+            <InputText @bind-Value="textbook.Module" />
+        </div>
+
+        <div>
+            <label>Condition</label>
+            <InputText @bind-Value="textbook.Condition" />
+        </div>
+
+        <div>
+            <label>Price</label>
+            <InputNumber @bind-Value="textbook.Price" />
+        </div>
+
+        <button type="submit">Save</button>
+</EditForm>
+}
+
+@code {
+    [Parameter] public int id { get; set;  }
+
+    private Textbook textbook;
+
+    protected override void OnInitialized()
+    {
+        textbook = db.Textbooks.FirstOrDefault(t => t.TextbookID == id);
+    }
+
+    private async Task UpdateTextbook()
+    {
+        db.Textbooks.Update(textbook);
+        await db.SaveChangesAsync();
+        nav.NavigateTo("/textbooks");
+    }
+
+}

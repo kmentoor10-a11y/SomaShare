@@ -1,0 +1,112 @@
+﻿@page "/transactions"
+@using SomaShare.Models
+@using SomaShare.Data
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@inject ApplicationDbContext db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>My Transactions</h3>
+
+@if (transactions == null)
+{
+    <p>Loading...</p>
+}
+else if (!transactions.Any())
+{
+    <p>No transactions yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Book</th>
+                <th>Status</th>
+                <th>Meetup</th>
+                <th>Trust Score</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var t in transactions)
+            {
+                <tr>
+                    <td>@t.Textbook.Title</td>
+                    <td>@t.Status</td>
+                    <td>@t.MeetupLocation</td>
+                    <td>
+                        @{
+                            var otherUserId = t.BuyerID == userId ? t.SellerID : t.BuyerID;
+                            trustScores.TryGetValue(otherUserId, out var trust);
+                        }
+                        @(trust == 0 ? "No ratings" : trust.ToString("0.0"))
+                    </td>
+
+                    <td>
+                        @if (t.Status == "Pending")
+                        {
+                            <button @onclick="() => CompleteTransaction(t.TransactionID)">
+                                Mark Complete
+                            </button>
+                        }
+                    </td>
+
+                    <td>
+                        @if (t.Status == "Completed")
+                        {
+                            <a href="/leave-review/@(t.BuyerID == userId ? t.SellerID : t.BuyerID)">
+                                Leave Review
+                            </a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Dictionary<string, double> trustScores = new();
+    private List<Transaction> transactions;
+    private string userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        transactions = db.Transactions
+            .Include(t => t.Textbook)
+            .Where(t => t.BuyerID == userId || t.SellerID == userId)
+            .ToList();
+
+        var userIds = transactions
+        .Select(t => t.BuyerID == userId ? t.SellerID : t.BuyerID)
+        .Distinct()
+        .ToList();
+
+        trustScores = db.Reviews
+        .Where(r => userIds.Contains(r.ReviewedUserID))
+        .GroupBy(r => r.ReviewedUserID)
+        .ToDictionary(
+            g => g.Key,
+            g => g.Average(r => r.Rating)
+        );
+    }
+
+    private async Task CompleteTransaction(int id)
+    {
+        var transaction = db.Transactions.FirstOrDefault(t => t.TransactionID == id);
+
+        if (transaction != null)
+        {
+            transaction.Status = "Completed";
+            await db.SaveChangesAsync();
+        }
+    }
+}

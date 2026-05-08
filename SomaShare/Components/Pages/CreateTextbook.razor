@@ -1,0 +1,74 @@
+﻿@page "/create-textbook"
+@using SomaShare.Models
+@using SomaShare.Data
+@inject ApplicationDbContext db
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<h3>CreateTextbook</h3>
+
+<EditForm Model="@textbook" OnValidSubmit="SaveTextbook">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Title</label>
+        <InputText @bind-Value="textbook.Title" />
+    </div>
+
+    <div>
+        <label>Author</label>
+        <InputText @bind-Value="textbook.Author" />
+    </div>
+
+    <div>
+        <label>Module</label>
+        <InputText @bind-Value="textbook.Module" />
+    </div>
+
+    <div>
+        <label>Condition</label>
+        <InputText @bind-Value="textbook.Condition" />
+    </div>
+
+    <div>
+        <label>Price</label>
+        <InputNumber @bind-Value="textbook.Price" />
+    </div>
+
+    <button type="submit">Save</button>
+
+</EditForm>
+
+@code {
+    private Textbook textbook = new Textbook();
+
+    private async Task SaveTextbook()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        Console.WriteLine("User authenticated: " + user.Identity.IsAuthenticated);
+        Console.WriteLine("User ID: " + userId);
+
+        if (!user.Identity.IsAuthenticated || string.IsNullOrEmpty(userId))
+        {
+            Console.WriteLine("User not logged in - save blocked");
+            return; //safety check
+        }
+
+        textbook.UserID = userId;
+
+        db.Textbooks.Add(textbook);
+        await db.SaveChangesAsync();
+
+        textbook = new Textbook(); //reset form
+    }
+
+}

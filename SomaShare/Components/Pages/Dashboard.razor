@@ -1,0 +1,158 @@
+﻿@page "/dashboard"
+@using SomaShare.Models
+@using SomaShare.Data
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+
+@inject ApplicationDbContext db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="container mt-4">
+<h3 class="mb-4 fw-bold">My Dashboard</h3>
+<p class="text-muted">Overview of your activity</p>
+
+@if (userId == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            My Listings
+        </div>
+    <div class="card-body">
+    @if(!myListings.Any())
+    {
+                    <div class="text-center text-muted py-3">
+                        No listings available yet
+                    </div>
+    }
+    else
+            {
+                <ul class="list-group">
+                    @foreach (var t in myListings)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>@t.Title</span>
+                            <span>R @t.Price</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            My Offers
+
+            <a href="/view-offers" class="btn btn-sm btn-primary">
+                View All Offers</a>
+        </div>
+        <div class="card-body">
+            @if (!myOffers.Any())
+                {
+                    <div class="text-center text-muted py-3">
+                        No offers available yet
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var o in myOffers)
+                        {
+                            <li class="list-group-item">
+                                @(o.Textbook?.Title ?? "Unknown") - R @o.Amount (@o.Status)
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+    </div>
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                My Transactions
+
+                <a href="/transactions" class="btn btn-sm btn-primary">
+                View Transactions    
+                </a>
+            </div>
+            <div class="card-body">
+                @if (!myTransactions.Any())
+                {
+                    <div class="text-center text-muted py-3">
+                        No transactions available yet
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var t in myTransactions)
+                        {
+                            <li class="list-group-item">
+                                @(t.Textbook?.Title) - @t.Status
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            Trust Score
+        </div>
+        <div class="card-body">
+            <h4>@trustScore</h4>
+        </div>
+    </div>
+}
+</div>
+
+@code {
+    private string userId;
+
+    private List<Textbook> myListings = new();
+    private List<Offer> myOffers = new();
+    private List<Transaction> myTransactions = new();
+
+    private double trustScore;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userId != null)
+        {
+            myListings = db.Textbooks
+            .Where(t => t.UserID == userId)
+            .ToList();
+
+            myOffers = db.Offers
+            .Include(o => o.Textbook)
+            .Where(o => o.UserID == userId)
+            .ToList();
+
+            myTransactions = db.Transactions
+            .Include(t => t.Textbook)
+            .Where(t => t.BuyerID == userId || t.SellerID == userId)
+            .ToList();
+
+            var reviews = db.Reviews
+            .Where(r => r.ReviewedUserID == userId)
+            .ToList();
+
+            trustScore = reviews.Any()
+                ? Math.Round(reviews.Average(r => r.Rating), 1)
+                : 0;
+        }
+
+        var user = authState.User;
+
+        Console.WriteLine("User logged in: " + user.Identity?.Name);
+        Console.WriteLine("Is Authenticated: " + user.Identity?.IsAuthenticated);
+    }
+}

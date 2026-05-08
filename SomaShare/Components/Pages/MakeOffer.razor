@@ -1,0 +1,60 @@
+﻿@page "/make-offer/{textbookId:int}"
+@using SomaShare.Models
+@using SomaShare.Data
+@using System.Security.Claims
+
+@inject ApplicationDbContext db
+@inject NavigationManager nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Make Offer</h3>
+
+@if (textbook == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p><b>Book:</b> @textbook.Title</p>
+
+    <EditForm Model="offer" OnValidSubmit="CreateOffer">
+
+        <div>
+            <label>Offer Amount</label>
+            <InputNumber @bind-Value="offer.Amount" />
+        </div>
+
+        <button type="submit">Submit Offer</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int textbookId { get; set; }
+
+    private Textbook textbook;
+    private Offer offer = new Offer();
+    private string userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        textbook = db.Textbooks.FirstOrDefault(t => t.TextbookID == textbookId);
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+
+    private async Task CreateOffer()
+    {
+        offer.TextbookID = textbookId;
+        offer.UserID = userId;
+        offer.Status = "Pending";
+
+        db.Offers.Add(offer);
+        await db.SaveChangesAsync();
+
+        nav.NavigateTo("/textbooks");
+    }
+
+}

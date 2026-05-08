@@ -1,0 +1,50 @@
+﻿@page "/leave-review/{userId}"
+@using SomaShare.Models
+@using SomaShare.Data
+@using System.Security.Claims
+
+@inject ApplicationDbContext db
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager nav
+
+<h3>Leave Review</h3>
+
+<EditForm Model="review" OnValidSubmit="SubmitReview">
+
+    <div>
+        <label>Rating (1-5)</label>
+        <InputNumber @bind-Value="review.Rating" />
+    </div>
+
+    <div>
+        <label>Comment</label>
+        <InputText @bind-Value="review.Comment" />
+    </div>
+
+    <button type="submit">Submit</button>
+</EditForm>
+
+@code {
+    [Parameter] public string userId { get; set; }
+
+    private Review review = new Review();
+    private string reviewerId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        reviewerId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+
+    private async Task SubmitReview()
+    {
+        review.ReviewerID = reviewerId;
+        review.ReviewedUserID = userId;
+
+        db.Reviews.Add(review);
+        await db.SaveChangesAsync();
+
+        nav.NavigateTo("/transactions");
+    }
+
+}

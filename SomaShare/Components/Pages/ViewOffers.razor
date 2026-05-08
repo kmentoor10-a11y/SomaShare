@@ -1,0 +1,124 @@
+﻿@page "/view-offers"
+@using SomaShare.Models
+@using SomaShare.Data
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@inject ApplicationDbContext db
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Offers on My Textbooks</h3>
+
+@if (offers == null)
+{
+    <p>Loading...</p>
+}
+else if (!offers.Any())
+{
+   <p>No offers yet.</p> 
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Book</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var o in offers)
+            {
+                <tr>
+                    <td>@o.Textbook.Title</td>
+                    <td>R @o.Amount</td>
+                    <td>@o.Status</td>
+
+                    <td>
+                        @if (o.Status == "Pending")
+                        {
+                            <button @onclick="() => AcceptOffer(o.OfferID)">
+                                Accept
+                            </button>
+
+                            <button @onclick="() => RejectOffer(o.OfferID)">
+                                Reject
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Offer> offers;
+    private string userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        offers = db.Offers
+        .Include(o => o.Textbook)
+        .Where(o => o.Textbook.UserID == userId)
+        .ToList();
+    }
+
+    private async Task AcceptOffer(int id)
+    {
+        var selectedOffer = db.Offers.FirstOrDefault(o => o.OfferID == id);
+
+        if (selectedOffer != null)
+        {
+            // Get all offers for the same textbook
+            var relatedOffers = db.Offers
+                .Where(o => o.TextbookID == selectedOffer.TextbookID)
+                .ToList();
+
+            foreach (var offer in relatedOffers)
+            {
+                if (offer.OfferID == id)
+                {
+                    offer.Status = "Accepted";
+
+                    //Transaction
+                    var transaction = new Transaction
+                        {
+                            BuyerID = offer.UserID,
+                            SellerID = offer.Textbook.UserID,
+                            TextbookID = offer.TextbookID,
+                            Status = "Pending",
+                            MeetupLocation = "To be arranged"
+                        };
+
+                        db.Transactions.Add(transaction);
+                }
+                else
+                {
+                    offer.Status = "Rejected";
+                }
+            }
+
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private async Task RejectOffer(int id)
+    {
+        var offer = db.Offers.FirstOrDefault(o => o.OfferID == id);
+
+        if (offer != null)
+        {
+            offer.Status = "Rejected";
+            await db.SaveChangesAsync();
+        }
+    }
+}

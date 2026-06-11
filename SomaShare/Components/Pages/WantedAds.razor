@@ -1,0 +1,43 @@
+﻿@page "/wanted-ads"
+@using SomaShare.Models
+@using SomaShare.Data
+@inject ApplicationDbContext db
+
+<h3>WantedAds</h3>
+
+@if (ads == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Budget</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in ads)
+            {
+                <tr>
+                    <td>@a.Title</td>
+                    <td>@a.Description</td>
+                    <td>R @a.Budget</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+)
+
+@code {
+    private List<WantedAd> ads;
+
+    protected override void OnInitialized()
+    {
+        ads = db.WantedAds.ToList();
+    }
+}

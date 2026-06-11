@@ -1,0 +1,41 @@
+﻿@page "/create-wanted-ad"
+@using SomaShare.Models
+@using SomaShare.Data
+@inject ApplicationDbContext db
+@inject AuthenticationStateProvider AuthStateProvider
+@using System.Security.Claims
+
+<h3>Create  Wanted Ad</h3>
+
+<EditForm Model="@ad"OnValidSubmit="SaveAd">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="ad.Title" placeholder="Title" />
+    <br/>
+
+    <InputTextArea @bind-Value="ad.Description" placeholder="Description" />
+    <br/>
+
+    <InputNumber @bind-Value="ad.Budget" placeholder="Budget"/>
+    <br/>
+
+    <button type="submit">Post Ad</button>
+</EditForm>
+
+@code {
+    private WantedAd ad = new WantedAd();
+
+    private async Task SaveAd()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userId = auth.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        ad.UserID = userId;
+
+        db.WantedAds.Add(ad);
+        await db.SaveChangesAsync();
+
+        ad = new WantedAd();
+    }
+}

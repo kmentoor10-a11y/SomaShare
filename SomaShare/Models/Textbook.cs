@@ -26,6 +26,8 @@ namespace SomaShare.Models
         [Range(0, 10000)]
         public decimal Price { get; set; }
 
+        public string? ImagePath { get; set; }
+
         //Foreign Key
         public string UserID { get; set; }
 

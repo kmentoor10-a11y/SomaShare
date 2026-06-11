@@ -66,6 +66,7 @@ else
                 <th>Module</th>
                 <th>Condition</th>
                 <th>Price</th>
+                <th>Image</th>
                 <th>Trust Score</th>
                 <th>Actions</th>
             </tr>
@@ -79,6 +80,15 @@ else
                     <td>@t.Module</td>
                     <td>@t.Condition</td>
                     <td>R @t.Price</td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(t.ImagePath))
+                        {
+                            <img src="@t.ImagePath"
+                            width="80"
+                            height="100"
+                            alt="Textbook Image" />
+                        }
+                    </td>
 
                     <td>
                         @{
